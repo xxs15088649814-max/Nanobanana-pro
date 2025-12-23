@@ -680,7 +680,19 @@ const API_URL = "https://api.bltcy.ai/v1/images/edits";
             const validImages = imageSlots.filter(item => item !== null); originalRefImage = null;
             if (validImages.length > 0) { const reader = new FileReader(); reader.onload = (e) => { originalRefImage = e.target.result; }; reader.readAsDataURL(validImages[0]); }
             const startTime = Date.now(); const formData = new FormData();
-            formData.append('model', modelName); formData.append('prompt', prompt); formData.append('aspect_ratio', ratio); formData.append('image_size', size); formData.append('n', batchSize); formData.append('response_format', 'url');
+            formData.append('model', modelName); 
+formData.append('prompt', prompt); 
+formData.append('aspect_ratio', ratio); 
+
+// === 修改开始：加一个判断 ===
+// 只有当模型名字里包含 'banana-2' 时，才发送分辨率参数
+if (modelName.includes('banana-2')) {
+    formData.append('image_size', size);
+}
+// === 修改结束 ===
+
+formData.append('n', batchSize); 
+formData.append('response_format', 'url');
             validImages.forEach((file) => formData.append('image', file));
             try {
                 const response = await fetch(API_URL, { method: 'POST', headers: { 'Authorization': `Bearer ${apiKey}` }, body: formData });
@@ -739,6 +751,7 @@ const API_URL = "https://api.bltcy.ai/v1/images/edits";
     </script>
 </body>
 </html>
+
 
 
 
