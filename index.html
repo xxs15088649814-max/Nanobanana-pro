@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xs的API工具箱</title>
+    <title>Xs的工具箱</title>
     <link rel="icon" href="kitty.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -58,7 +58,7 @@
             <div class="w-8 h-8 bg-white rounded-lg border border-gray-200 shadow-sm shrink-0 overflow-hidden">
                 <img src="https://raw.githubusercontent.com/Vinsen0110/Nano2-Pro-Zz/main/nanobanana.jpg" class="w-full h-full object-cover" alt="Logo" onerror="this.src='kitty.png'">
             </div>
-            <span class="font-bold text-lg tracking-tight text-gray-900 dark:text-gray-100">Nano-banana-Pro</span>
+            <span class="font-bold text-lg tracking-tight text-gray-900 dark:text-gray-100">Nano Banana Pro</span>
         </div>
         
         <div class="flex items-center gap-3 text-sm">
@@ -387,21 +387,16 @@
             const currentUrl = localStorage.getItem('nano_api_url') || DEFAULT_API_URL;
             const isPlato = currentUrl.includes('bltcy.ai');
             
-            // 找到 HD 选项元素
             const hdOption = document.querySelector('.model-option[data-val="nano-banana-hd"]');
             if (!hdOption) return;
 
             if (isPlato) {
-                // 如果是柏拉图，禁用 HD
                 hdOption.classList.add('option-disabled');
-                
-                // 如果当前选中的就是 HD，强制切回 4K
                 const currentModel = document.getElementById('model-input').value;
                 if (currentModel === 'nano-banana-hd') {
                     selectModel('nano-banana-2-4k', 'nano-banana-2-4K');
                 }
             } else {
-                // 其他情况，解除禁用
                 hdOption.classList.remove('option-disabled');
             }
         }
@@ -601,7 +596,6 @@
                 localStorage.setItem('nano_api_key', key); 
                 localStorage.setItem('nano_api_url', url || DEFAULT_API_URL);
                 updateApiDisplay(url || DEFAULT_API_URL); 
-                // === 保存时更新模型限制 ===
                 updateModelRestrictions();
                 closeSettings(); 
             } else { 
@@ -655,13 +649,13 @@
         zoomContainer.addEventListener('dblclick', resetZoom);
         function setBatchSize(num) { batchSize = num; document.querySelectorAll('.batch-btn').forEach(btn => { if(parseInt(btn.dataset.val) === num) btn.className = "batch-btn active-btn flex-1 py-2 text-xs rounded transition"; else btn.className = "batch-btn inactive-btn bg-gray-100 border-gray-300 text-gray-500 dark:bg-[#18181b] dark:border-[#27272a] dark:text-gray-400 flex-1 py-2 text-xs rounded transition"; }); }
 
+        // === 修改：并发请求逻辑修复批量生成问题 ===
         async function submitTask() {
             const apiKey = localStorage.getItem('nano_api_key');
             if (!apiKey) { openSettings(); return; }
 
             let currentApiUrl = localStorage.getItem('nano_api_url') || DEFAULT_API_URL;
             currentApiUrl = currentApiUrl.replace(/\/+$/, "");
-
             if (!currentApiUrl.endsWith('/v1/images/edits')) {
                 currentApiUrl += '/v1/images/edits';
             }
@@ -670,26 +664,59 @@
             const ratio = document.getElementById('ratio-select').value; const size = document.getElementById('size-select').value; const modelName = document.getElementById('model-input').value;
             const btn = document.getElementById('generate-btn'), icon = document.getElementById('loading-icon');
             if (!prompt) { alert("请输入提示词"); return; }
+            
             btn.disabled = true;
-            btn.classList.add('opacity-70', 'cursor-not-allowed'); icon.classList.remove('hidden'); btn.querySelector('span').innerText = "生成中...";
+            btn.classList.add('opacity-70', 'cursor-not-allowed'); icon.classList.remove('hidden'); 
+            btn.querySelector('span').innerText = `生成中 (0/${batchSize})...`; // 显示进度
+
             const validImages = imageSlots.filter(item => item !== null); originalRefImage = null;
             if (validImages.length > 0) { const reader = new FileReader(); reader.onload = (e) => { originalRefImage = e.target.result; }; reader.readAsDataURL(validImages[0]); }
             const startTime = Date.now();
-            const formData = new FormData();
-            formData.append('model', modelName); formData.append('prompt', prompt); formData.append('aspect_ratio', ratio); formData.append('image_size', size); formData.append('n', batchSize); formData.append('response_format', 'url');
-            validImages.forEach((file) => formData.append('image', file));
-            try {
+
+            // 定义单个请求函数
+            const sendRequest = async () => {
+                const formData = new FormData();
+                formData.append('model', modelName); formData.append('prompt', prompt); 
+                formData.append('aspect_ratio', ratio); formData.append('image_size', size); 
+                formData.append('n', 1); // 强制每次只请求1张，通过并发实现多张
+                formData.append('response_format', 'url');
+                validImages.forEach((file) => formData.append('image', file));
+
                 const response = await fetch(currentApiUrl, { method: 'POST', headers: { 'Authorization': `Bearer ${apiKey}` }, body: formData });
-                
-                const data = await response.json(); const duration = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+                const data = await response.json();
                 if (!response.ok) throw new Error(data.error?.message || "请求失败");
-                const results = data.data || (data.url ? [{url: data.url}] : []);
-                if (results.length > 0) { 
-                    setMainImage(results[0].url, duration, originalRefImage); 
-                    results.forEach(img => addToHistory(img.url, prompt, duration)); 
-                } else { alert("生成成功，但未返回图片链接"); }
+                return data.data || (data.url ? [{url: data.url}] : []);
+            };
+
+            try {
+                // 并发发送请求
+                const requestPromises = Array.from({ length: batchSize }, () => sendRequest());
+                const outcomes = await Promise.allSettled(requestPromises);
+                
+                const allResults = [];
+                outcomes.forEach(outcome => {
+                    if (outcome.status === 'fulfilled') {
+                        allResults.push(...outcome.value);
+                    } else {
+                        console.error("部分请求失败:", outcome.reason);
+                    }
+                });
+
+                const duration = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+                
+                if (allResults.length > 0) { 
+                    setMainImage(allResults[0].url, duration, originalRefImage); 
+                    allResults.forEach(img => addToHistory(img.url, prompt, duration)); 
+                } else { 
+                    alert("生成失败，请检查设置或重试"); 
+                }
             } catch (err) { console.error(err); alert("错误: " + err.message); } 
-            finally { btn.disabled = false; btn.classList.remove('opacity-70', 'cursor-not-allowed'); icon.classList.add('hidden'); btn.querySelector('span').innerText = "✨ 立即生成"; }
+            finally { 
+                btn.disabled = false; 
+                btn.classList.remove('opacity-70', 'cursor-not-allowed'); 
+                icon.classList.add('hidden'); 
+                btn.querySelector('span').innerText = "✨ 立即生成"; 
+            }
         }
 
         function setMainImage(url, duration = "", refSrc = null) {
