@@ -47,7 +47,6 @@
         
         .group:hover .group-hover\:block { display: block; animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-        /* 新增：禁用状态样式 */
         .option-disabled { opacity: 0.5; pointer-events: none; cursor: not-allowed; background-color: #f3f4f6; }
         .dark .option-disabled { background-color: #27272a; }
     </style>
@@ -56,8 +55,8 @@
 
     <header class="h-14 border-b border-gray-200 dark:border-[#27272a] bg-white dark:bg-[#09090b] flex items-center justify-between px-4 shrink-0 z-50 transition-colors">
         <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center border border-gray-200 shadow-sm shrink-0 overflow-hidden text-purple-500">
-                <i class="fa-solid fa-image text-lg"></i>
+            <div class="w-8 h-8 bg-white rounded-lg border border-gray-200 shadow-sm shrink-0 overflow-hidden">
+                <img src="https://raw.githubusercontent.com/Vinsen0110/Nano2-Pro-Zz/main/nanobanana.jpg" class="w-full h-full object-cover" alt="Logo" onerror="this.src='kitty.png'">
             </div>
             <span class="font-bold text-lg tracking-tight text-gray-900 dark:text-gray-100">Nano-banana-Pro</span>
         </div>
@@ -363,7 +362,7 @@
                 } catch (e) { console.error("History Load Error", e); }
             }
 
-            // === 新增：页面加载时检查模型限制 ===
+            // === 页面加载时检查模型限制 ===
             updateModelRestrictions();
         });
 
@@ -383,7 +382,7 @@
             }
         }
 
-        // === 新增：模型限制逻辑 ===
+        // === 模型限制逻辑 ===
         function updateModelRestrictions() {
             const currentUrl = localStorage.getItem('nano_api_url') || DEFAULT_API_URL;
             const isPlato = currentUrl.includes('bltcy.ai');
@@ -602,7 +601,7 @@
                 localStorage.setItem('nano_api_key', key); 
                 localStorage.setItem('nano_api_url', url || DEFAULT_API_URL);
                 updateApiDisplay(url || DEFAULT_API_URL); 
-                // === 新增：保存时更新模型限制 ===
+                // === 保存时更新模型限制 ===
                 updateModelRestrictions();
                 closeSettings(); 
             } else { 
@@ -810,4 +809,3 @@
     </script>
 </body>
 </html>
-
