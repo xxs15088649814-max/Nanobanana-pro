@@ -104,6 +104,11 @@
             <span class="font-bold text-lg tracking-tight text-gray-900 dark:text-gray-100">Sora 2</span>
         </div>
         <div class="flex items-center gap-3 text-sm">
+            <div class="hidden md:flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-[#18181b] border border-gray-200 dark:border-[#27272a] rounded-full text-[10px] font-mono text-gray-500 dark:text-gray-400 select-none mr-2" title="当前使用的API接口域名">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span id="current-api-display">检测中...</span>
+            </div>
+
             <button onclick="toggleTheme()" class="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-[#18181b] transition"><i id="theme-icon" class="fa-solid fa-moon"></i></button>
             <button onclick="openSettings()" class="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-[#18181b] transition"><i class="fa-solid fa-gear"></i></button>
         </div>
@@ -270,7 +275,19 @@
                 <button onclick="closeSettings()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#27272a] flex items-center justify-center hover:bg-gray-200 dark:hover:bg-[#3f3f46] transition"><i class="fa-solid fa-xmark text-gray-500"></i></button>
             </div>
             <div class="space-y-4">
-                <div><label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">接口地址 (Base URL)</label><input type="text" id="setting-url" class="w-full bg-gray-50 dark:bg-[#0c0c0e] border border-gray-200 dark:border-[#27272a] rounded-xl p-3 text-sm dark:text-gray-200 font-mono outline-none focus:border-violet-500 transition" placeholder="https://api.bltcy.ai"></div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">API 网站地址</label>
+                    <input type="text" id="setting-url" class="w-full bg-gray-50 dark:bg-[#0c0c0e] border border-gray-200 dark:border-[#27272a] rounded-xl p-3 text-sm dark:text-gray-200 font-mono outline-none focus:border-violet-500 transition" placeholder="https://api.bltcy.ai">
+                    
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="fillApiUrl('https://ai.t8star.cn')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 text-xs font-bold text-pink-600 dark:text-pink-400 hover:bg-pink-100 dark:hover:bg-pink-900/40 transition cursor-pointer">
+                            <i class="fa-solid fa-spa"></i> 贞贞: ai.t8star.cn
+                        </button>
+                        <button onclick="fillApiUrl('https://api.bltcy.ai')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition cursor-pointer">
+                            <i class="fa-solid fa-landmark"></i> 柏拉图: api.bltcy.ai
+                        </button>
+                    </div>
+                </div>
                 <div><label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">API Key</label><input type="password" id="setting-key" class="w-full bg-gray-50 dark:bg-[#0c0c0e] border border-gray-200 dark:border-[#27272a] rounded-xl p-3 text-sm dark:text-gray-200 font-mono outline-none focus:border-violet-500 transition" placeholder="sk-..."></div>
                 <button onclick="saveSettings()" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-violet-500/20 mt-2">保存配置</button>
             </div>
@@ -288,6 +305,25 @@
             loadSettings(); loadTheme(); loadHistory(); updateModelLimits();
             setupResizers();
             checkAllTasksStatus(); startPolling();
+        }
+
+        // === 新增：填充API地址函数 ===
+        function fillApiUrl(url) {
+            document.getElementById('setting-url').value = url;
+            // 给个小动画反馈
+            const input = document.getElementById('setting-url');
+            input.classList.add('ring-2', 'ring-violet-500');
+            setTimeout(() => input.classList.remove('ring-2', 'ring-violet-500'), 200);
+        }
+
+        // === 新增：更新右上角API显示 ===
+        function updateApiDisplay(url) {
+            try {
+                const hostname = new URL(url).hostname;
+                document.getElementById('current-api-display').innerText = "当前: " + hostname;
+            } catch (e) {
+                document.getElementById('current-api-display').innerText = "当前: Custom";
+            }
         }
 
         // === Resizer Logic (X & Y) ===
@@ -616,12 +652,17 @@
             document.getElementById('setting-key').value = localStorage.getItem('sora_api_key') || '';
             const url = localStorage.getItem('sora_api_url') || DEFAULT_API_URL;
             document.getElementById('setting-url').value = url;
+            updateApiDisplay(url); // 加载时更新显示
         }
         function saveSettings() {
             let url = document.getElementById('setting-url').value.trim();
+            // 去除末尾斜杠，但不再自动添加任何路径
             if(url.endsWith('/')) url = url.slice(0, -1);
+            
             localStorage.setItem('sora_api_key', document.getElementById('setting-key').value.trim());
             localStorage.setItem('sora_api_url', url || DEFAULT_API_URL);
+            
+            updateApiDisplay(url || DEFAULT_API_URL); // 保存时更新显示
             closeSettings();
         }
         
@@ -767,8 +808,4 @@
         function clearHistory() { if(confirm("清空历史记录？")) { taskList = []; saveHistory(); renderTaskList(); activeTaskId=null; document.getElementById('preview-placeholder').classList.remove('hidden'); document.getElementById('main-player').classList.add('hidden'); } }
     </script>
 </body>
-
 </html>
-
-
-
